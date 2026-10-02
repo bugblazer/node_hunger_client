@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">
-		<title>client</title>
+		<title>Node Hunger</title>
 		<style>
 html, body, #canvas {
 	margin: 0;
@@ -92,6 +92,55 @@ body {
 		</style>
 		<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
 <link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
+<style>
+#wake-notice{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:10;max-width:min(92vw,480px);padding:12px 16px;border-radius:10px;background:rgba(20,20,24,.92);border:1px solid #444;color:#eee;font:14px/1.4 'Noto Sans',Arial,sans-serif;text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.4);display:none}
+#wake-notice strong{color:#ffb347}
+</style>
+<script>
+// The game server runs on a free host that sleeps when nobody is playing and takes
+// 20-50 s to wake. Start waking it while the game itself is still downloading, and
+// tell the player what's happening instead of leaving them on a silent screen.
+(function () {
+  var HEALTH = 'https://node-hunger-server.onrender.com/health';
+  var started = Date.now(), awake = false, box;
+  function show(html) {
+    if (!box) { box = document.getElementById('wake-notice'); }
+    if (!box) { return; }
+    box.innerHTML = html;
+    box.style.display = 'block';
+  }
+  function tick() {
+    if (awake) { return; }
+    var s = Math.round((Date.now() - started) / 1000);
+    show(s < 90
+      ? '<strong>Waking up the game server…</strong><br>It sleeps when nobody is playing. This takes up to a minute (' + s + 's).'
+      : '<strong>Still waking the server…</strong><br>If nothing happens soon, refresh the page.');
+    setTimeout(tick, 1000);
+  }
+  function ping() {
+    var ctrl = window.AbortController ? new AbortController() : null;
+    var timer = setTimeout(function () { if (ctrl) { ctrl.abort(); } }, 15000);
+    fetch(HEALTH, { cache: 'no-store', signal: ctrl ? ctrl.signal : undefined })
+      .then(function (r) {
+        clearTimeout(timer);
+        if (!r.ok) { throw new Error(r.status); }
+        awake = true;
+        if (box) { box.style.display = 'none'; }
+      })
+      .catch(function () { clearTimeout(timer); setTimeout(ping, 3000); });
+  }
+  ping();
+  // Only show the notice if the server doesn't answer straight away.
+  setTimeout(function () { if (!awake) { tick(); } }, 1500);
+  document.addEventListener('DOMContentLoaded', function () {
+    var el = document.createElement('div');
+    el.id = 'wake-notice';
+    el.setAttribute('role', 'status');
+    document.body.appendChild(el);
+  });
+})();
+</script>
+
 
 	</head>
 	<body>
