@@ -103,6 +103,23 @@ body {
 (function () {
   var HEALTH = 'https://node-hunger-server.onrender.com/health';
   var started = Date.now(), awake = false, box;
+  function markAwake() {
+    awake = true;
+    if (box) { box.style.display = 'none'; }
+  }
+  // Also count the game's own connection: once its WebSocket opens, the server is
+  // up, even if /health is unreachable (e.g. an older server without it).
+  var NativeWebSocket = window.WebSocket;
+  if (NativeWebSocket) {
+    var Patched = function (url, protocols) {
+      var ws = protocols === undefined ? new NativeWebSocket(url) : new NativeWebSocket(url, protocols);
+      ws.addEventListener('open', markAwake);
+      return ws;
+    };
+    Patched.prototype = NativeWebSocket.prototype;
+    ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'].forEach(function (k) { Patched[k] = NativeWebSocket[k]; });
+    window.WebSocket = Patched;
+  }
   function show(html) {
     if (!box) { box = document.getElementById('wake-notice'); }
     if (!box) { return; }
@@ -118,14 +135,14 @@ body {
     setTimeout(tick, 1000);
   }
   function ping() {
+    if (awake) { return; }
     var ctrl = window.AbortController ? new AbortController() : null;
     var timer = setTimeout(function () { if (ctrl) { ctrl.abort(); } }, 15000);
     fetch(HEALTH, { cache: 'no-store', signal: ctrl ? ctrl.signal : undefined })
       .then(function (r) {
         clearTimeout(timer);
         if (!r.ok) { throw new Error(r.status); }
-        awake = true;
-        if (box) { box.style.display = 'none'; }
+        markAwake();
       })
       .catch(function () { clearTimeout(timer); setTimeout(ping, 3000); });
   }
@@ -140,8 +157,6 @@ body {
   });
 })();
 </script>
-
-
 	</head>
 	<body>
 		<canvas id="canvas">
@@ -160,8 +175,8 @@ body {
 
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":879424,"index.wasm":36445641},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
-const GODOT_THREADS_ENABLED = true;
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":true,"fileSizes":{"index.pck":798516,"index.wasm":38034280},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
 (function () {
