@@ -1,5 +1,7 @@
 # Node Hunger (web build)
 
+![Node Hunger: the NODE HUNGER logo between two crowned red blobs eating spores](docs/title.jpg)
+
 The web export of **Node Hunger**, an Agar.io-style multiplayer browser game, as deployed on Vercel.
 
 **Play it:** https://nodehunger.bugblazer.dev
